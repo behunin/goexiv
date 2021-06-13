@@ -8,7 +8,6 @@ import "C"
 import (
 	"errors"
 	"reflect"
-	"runtime"
 	"unsafe"
 )
 
@@ -23,6 +22,7 @@ type Image struct {
 
 type MetadataProvider interface {
 	GetString(key string) (string, error)
+	Close()
 }
 
 var ErrMetadataKeyNotFound = errors.New("key not found")
@@ -43,15 +43,9 @@ func makeError(cerr *C.Exiv2Error) *Error {
 }
 
 func makeImage(cimg *C.Exiv2Image) *Image {
-	img := &Image{
+	return &Image{
 		cimg,
 	}
-
-	runtime.SetFinalizer(img, func(x *Image) {
-		C.exiv2_image_free(x.img)
-	})
-
-	return img
 }
 
 // Open opens an image file from the filesystem and returns a pointer to
@@ -91,6 +85,11 @@ func OpenBytes(b []byte) (*Image, error) {
 	}
 
 	return makeImage(cimg), nil
+}
+
+// Close free's the Image data.
+func (i *Image) Close() {
+	C.exiv2_image_free(i.img)
 }
 
 // ReadMetadata reads the metadata of an Image
