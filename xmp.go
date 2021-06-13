@@ -29,38 +29,35 @@ type XmpDatumIterator struct {
 }
 
 func makeXmpData(img *Image, cdata *C.Exiv2XmpData) *XmpData {
-	data := &XmpData{
-		img,
-		cdata,
-	}
-
-	runtime.SetFinalizer(data, func(x *XmpData) {
-		C.exiv2_xmp_data_free(x.data)
-	})
-
-	return data
-}
-
-func makeXmpDatum(data *XmpData, cdatum *C.Exiv2XmpDatum) *XmpDatum {
-	if cdatum == nil {
+	if img == nil || cdata == nil {
 		return nil
 	}
 
-	datum := &XmpDatum{
+	return &XmpData{
+		img,
+		cdata,
+	}
+}
+
+func makeXmpDatum(data *XmpData, cdatum *C.Exiv2XmpDatum) *XmpDatum {
+	if data == nil || cdatum == nil {
+		return nil
+	}
+
+	return &XmpDatum{
 		data,
 		cdatum,
 	}
-
-	runtime.SetFinalizer(datum, func(x *XmpDatum) {
-		C.exiv2_xmp_datum_free(x.datum)
-	})
-
-	return datum
 }
 
 // GetXmpData returns the XmpData of an Image.
 func (i *Image) GetXmpData() *XmpData {
 	return makeXmpData(i, C.exiv2_image_get_xmp_data(i.img))
+}
+
+// Close free's the Xmp data.
+func (d *XmpData) Close() {
+	C.exiv2_xmp_data_free(d.data)
 }
 
 // FindKey tries to find the specified key and returns its data.
