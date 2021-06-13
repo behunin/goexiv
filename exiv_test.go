@@ -91,8 +91,49 @@ func Test_OpenBytesFailures(t *testing.T) {
 	}
 }
 
-func TestMetadata(t *testing.T) {
+func TestIPTC(t *testing.T) {
 	img, err := goexiv.Open("testdata/pixel.jpg")
+
+	assert.NilError(t, err)
+	defer img.Close()
+
+	err = img.ReadMetadata()
+
+	if err != nil {
+		t.Fatalf("Cannot read image metadata: %s", err)
+	}
+
+	width := img.PixelWidth()
+	height := img.PixelHeight()
+	if width != 1 || height != 1 {
+		t.Errorf("Cannot read image size (expected 1x1, got %dx%d)", width, height)
+	}
+
+	iptcData := img.GetIptcData()
+
+	assert.Check(t, iptcData != nil)
+
+	// Iterate over all IPTC data accessing Key() and String()
+	keyValues := map[string]string{}
+	i := iptcData.Iterator()
+	for i.HasNext() {
+		d := i.Next()
+		keyValues[d.Key()] = d.String()
+	}
+	i.Close()
+	iptcData.Close()
+	assert.DeepEqual(t, keyValues, map[string]string{
+		"Iptc.Application2.Caption":     "Hello, world! Привет, мир!",
+		"Iptc.Application2.Copyright":   "this is the copy, right?",
+		"Iptc.Application2.CountryName": "Lancre",
+		"Iptc.Application2.DateCreated": "1848-10-13",
+		"Iptc.Application2.TimeCreated": "12:49:32+01:00",
+	})
+}
+
+func TestExif(t *testing.T) {
+	img, err := goexiv.Open("testdata/pixel.jpg")
+
 	assert.NilError(t, err)
 	defer img.Close()
 
@@ -109,6 +150,10 @@ func TestMetadata(t *testing.T) {
 	}
 
 	data := img.GetExifData()
+
+	if data == nil {
+		t.Fatalf("Data Not Found!")
+	}
 
 	// Invalid key
 	datum, err := data.FindKey("NotARealKey")
@@ -141,8 +186,8 @@ func TestMetadata(t *testing.T) {
 
 	datum, err = data.FindKey("Exif.Photo.Flash")
 
-	if err != nil {
-		t.Fatalf("FindKey returns an error for a valid, non existing key: %s", err)
+	if err == nil {
+		t.Fatalf("FindKey should return an error for a valid, non existing key: %s", err)
 	}
 
 	if datum != nil {
@@ -150,97 +195,94 @@ func TestMetadata(t *testing.T) {
 	}
 
 	// Iterate over all Exif data accessing Key() and String()
-	{
-		keyValues := map[string]string{}
-		for i := data.Iterator(); i.HasNext(); {
-			d := i.Next()
-			keyValues[d.Key()] = d.String()
-		}
-		assert.DeepEqual(t, keyValues, map[string]string{
-			"Exif.Image.ExifTag":                 "134",
-			"Exif.Image.Make":                    "FakeMake",
-			"Exif.Image.Model":                   "FakeModel",
-			"Exif.Image.ResolutionUnit":          "2",
-			"Exif.Image.XResolution":             "72/1",
-			"Exif.Image.YCbCrPositioning":        "1",
-			"Exif.Image.YResolution":             "72/1",
-			"Exif.Photo.ColorSpace":              "65535",
-			"Exif.Photo.ComponentsConfiguration": "1 2 3 0",
-			"Exif.Photo.DateTimeDigitized":       "2013:12:08 21:06:10",
-			"Exif.Photo.ExifVersion":             "48 50 51 48",
-			"Exif.Photo.FlashpixVersion":         "48 49 48 48",
-		})
+	keyValues := map[string]string{}
+	i := data.Iterator()
+	for i.HasNext() {
+		d := i.Next()
+		keyValues[d.Key()] = d.String()
 	}
-
-	//
-	// IPTC
-	//
-	iptcData := img.GetIptcData()
-
-	// Iterate over all IPCT data accessing Key() and String()
-	{
-		keyValues := map[string]string{}
-		for i := iptcData.Iterator(); i.HasNext(); {
-			d := i.Next()
-			keyValues[d.Key()] = d.String()
-		}
-		assert.DeepEqual(t, keyValues, map[string]string{
-			"Iptc.Application2.Copyright":   "this is the copy, right?",
-			"Iptc.Application2.CountryName": "Lancre",
-			"Iptc.Application2.DateCreated": "1848-10-13",
-			"Iptc.Application2.TimeCreated": "12:49:32+01:00",
-		})
-	}
-
-	//
-	// ICC profile
-	//
-	iccProfile := img.ICCProfile()
-	assert.Equal(t,
-		// 128 bytes header
-		"\x00\x00\x02\x30"+
-			"ADBE\x02\x10\x00\x00"+
-			"mntrRGB XYZ \x07\xcf\x00\x06\x00\x03\x00\x00\x00\x00\x00\x00"+
-			"acspAPPL\x00\x00\x00\x00"+
-			"none\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"+
-			"\x00\x00\xf6\xd6\x00\x01\x00\x00\x00\x00\xd3-"+
-			"ADBE\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"+
-			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"+
-			"\x00\x00\x00\x00\x00\x00"+
-			// tag table (124 bytes)
-			// tag count (10)
-			"\x00\x00\x00\x0a"+
-			// tag references (4 bytes signature, 4 bytes position from start of profile, 4 bytes length)
-			"cprt\x00\x00\x00\xfc\x00\x00\x00\x32"+
-			"desc\x00\x00\x01\x30\x00\x00\x00k"+
-			"wtpt\x00\x00\x01\x9c\x00\x00\x00\x14"+
-			"bkpt\x00\x00\x01\xb0\x00\x00\x00\x14"+
-			"rTRC\x00\x00\x01\xc4\x00\x00\x00\x0e"+
-			"gTRC\x00\x00\x01\xd4\x00\x00\x00\x0e"+
-			"bTRC\x00\x00\x01\xe4\x00\x00\x00\x0e"+
-			"rXYZ\x00\x00\x01\xf4\x00\x00\x00\x14"+
-			"gXYZ\x00\x00\x02\b\x00\x00\x00\x14"+
-			"bXYZ\x00\x00\x02\x1c\x00\x00\x00\x14"+
-			// tagged element data (308 bytes; sum of the length of the ten tags)
-			"text\x00\x00\x00\x00Copyright 1999 Adobe Systems Incorporated\x00\x00\x00"+
-			"desc\x00\x00\x00\x00\x00\x00\x00\x11Adobe RGB (1998)"+
-			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"+
-			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"+
-			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"+
-			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"+
-			"XYZ \x00\x00\x00\x00\x00\x00\xf3Q\x00\x01\x00\x00\x00\x01\x16\xcc"+
-			"XYZ \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"+
-			"curv\x00\x00\x00\x00\x00\x00\x00\x01\x023\x00\x00"+
-			"curv\x00\x00\x00\x00\x00\x00\x00\x01\x023\x00\x00"+
-			"curv\x00\x00\x00\x00\x00\x00\x00\x01\x023\x00\x00"+
-			"XYZ \x00\x00\x00\x00\x00\x00\x9c\x18\x00\x00O\xa5\x00\x00\x04\xfc"+
-			"XYZ \x00\x00\x00\x00\x00\x004\x8d\x00\x00\xa0,\x00\x00\x0f\x95"+
-			"XYZ \x00\x00\x00\x00\x00\x00&1\x00\x00\x10/\x00\x00\xbe\x9c",
-		string(iccProfile),
-	)
+	i.Close()
+	data.Close()
+	assert.DeepEqual(t, keyValues, map[string]string{
+		"Exif.Image.ExifTag":                 "134",
+		"Exif.Image.Make":                    "FakeMake",
+		"Exif.Image.Model":                   "FakeModel",
+		"Exif.Image.ResolutionUnit":          "2",
+		"Exif.Image.XResolution":             "72/1",
+		"Exif.Image.YCbCrPositioning":        "1",
+		"Exif.Image.YResolution":             "72/1",
+		"Exif.Photo.ColorSpace":              "65535",
+		"Exif.Photo.ComponentsConfiguration": "1 2 3 0",
+		"Exif.Photo.DateTimeDigitized":       "2013:12:08 21:06:10",
+		"Exif.Photo.ExifVersion":             "48 50 51 48",
+		"Exif.Photo.FlashpixVersion":         "48 49 48 48",
+	})
 }
 
-func TestNoMetadata(t *testing.T) {
+func TestXMP(t *testing.T) {
+	img, err := goexiv.Open("testdata/OZZY.jpg")
+
+	assert.NilError(t, err)
+	defer img.Close()
+
+	err = img.ReadMetadata()
+
+	if err != nil {
+		t.Fatalf("Cannot read image metadata: %s", err)
+	}
+
+	data := img.GetXmpData()
+
+	if data == nil {
+		t.Fatalf("Data Not Found!")
+	}
+
+	// Valid, existing key
+
+	datum, err := data.FindKey("Xmp.xmpRights.WebStatement")
+
+	if err != nil {
+		t.Fatalf("FindKey returns an error for an valid key")
+	}
+
+	if datum == nil {
+		t.Fatalf("FindKey does return nil for an valid key")
+	}
+
+	// Invalid key
+	datum, err = data.FindKey("NotARealKey")
+
+	if err == nil {
+		t.Fatalf("FindKey returns a nil error for an invalid key")
+	}
+
+	if datum != nil {
+		t.Fatalf("FindKey does not return nil for an invalid key")
+	}
+
+	// Iterate over all Exif data accessing Key() and String()
+	keyValues := map[string]string{}
+	i := data.Iterator()
+	for i.HasNext() {
+		d := i.Next()
+		keyValues[d.Key()] = d.String()
+	}
+	i.Close()
+	data.Close()
+	assert.DeepEqual(t, keyValues, map[string]string{
+		"Xmp.xmpRights.WebStatement":     "iRockimages.com",
+		"Xmp.xmpRights.UsageTerms":       "",
+		"Xmp.photoshop.LegacyIPTCDigest": "67B99F1727D6D51B794526CA4D330C86",
+		"Xmp.tiff.ImageWidth":            "433",
+		"Xmp.tiff.ImageLength":           "650",
+		"Xmp.tiff.XResolution":           "240/1",
+		"Xmp.tiff.YResolution":           "240/1",
+		"Xmp.tiff.ResolutionUnit":        "2",
+		"Xmp.dc.rights":                  "iRockimages.com",
+	})
+}
+
+func TestNoICC(t *testing.T) {
 	img, err := goexiv.Open("testdata/stripped_pixel.jpg")
 	assert.NilError(t, err)
 	err = img.ReadMetadata()
