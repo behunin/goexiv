@@ -72,7 +72,7 @@ Exiv2Image* exiv2_image_factory_open(const char *path, Exiv2Error **error)
 		}
 	}
 
-	return 0;
+	return nullptr;
 }
 
 Exiv2Image* exiv2_image_factory_open_bytes(const unsigned char *bytes, long size, Exiv2Error **error)
@@ -90,7 +90,7 @@ Exiv2Image* exiv2_image_factory_open_bytes(const unsigned char *bytes, long size
 		}
 	}
 
-	return 0;
+	return nullptr;
 }
 
 void exiv2_image_read_metadata(Exiv2Image *img, Exiv2Error **error)
@@ -167,7 +167,7 @@ const unsigned char* exiv2_image_icc_profile(Exiv2Image *img)
 	if (img->image->iccProfileDefined()) {
 		return img->image->iccProfile()->pData_;
 	}
-	return NULL;
+	return nullptr;
 }
 
 long exiv2_image_icc_profile_size(Exiv2Image *img)
@@ -189,7 +189,7 @@ Exiv2XmpDatum* exiv2_xmp_data_find_key(const Exiv2XmpData *data, const char *key
 	try {
 		const Exiv2::XmpData::const_iterator it = data->data.findKey(Exiv2::XmpKey(key));
 		if (it == data->data.end()) {
-			return 0;
+			return nullptr;
 		}
 
 		return new Exiv2XmpDatum(*it);
@@ -198,7 +198,7 @@ Exiv2XmpDatum* exiv2_xmp_data_find_key(const Exiv2XmpData *data, const char *key
 			*error = new Exiv2Error(e);
 		}
 
-		return 0;
+		return nullptr;
 	}
 }
 
@@ -237,7 +237,7 @@ Exiv2XmpDatum *Exiv2XmpDatumIterator::next()
 {
 	if (it == end)
 	{
-		return 0;
+		return nullptr;
 	}
 	return new Exiv2XmpDatum(*it++);
 }
@@ -265,7 +265,7 @@ Exiv2IptcDatum* exiv2_iptc_data_find_key(const Exiv2IptcData *data, const char *
 	try {
 		const Exiv2::IptcData::const_iterator it = data->data.findKey(Exiv2::IptcKey(key));
 		if (it == data->data.end()) {
-			return 0;
+			return nullptr;
 		}
 
 		return new Exiv2IptcDatum(*it);
@@ -274,7 +274,7 @@ Exiv2IptcDatum* exiv2_iptc_data_find_key(const Exiv2IptcData *data, const char *
 			*error = new Exiv2Error(e);
 		}
 
-		return 0;
+		return nullptr;
 	}
 }
 
@@ -296,7 +296,7 @@ int exiv2_iptc_data_iterator_has_next(const Exiv2IptcDatumIterator *iter)
 Exiv2IptcDatum* Exiv2IptcDatumIterator::next()
 {
 	if (it == end) {
-		return 0;
+		return nullptr;
 	}
 	return new Exiv2IptcDatum(*it++);
 }
@@ -334,7 +334,7 @@ Exiv2ExifDatum* exiv2_exif_data_find_key(const Exiv2ExifData *data, const char *
 	try {
 		const Exiv2::ExifData::const_iterator it = data->data.findKey(Exiv2::ExifKey(key));
 		if (it == data->data.end()) {
-			return 0;
+			return nullptr;
 		}
 
 		return new Exiv2ExifDatum(*it);
@@ -343,7 +343,7 @@ Exiv2ExifDatum* exiv2_exif_data_find_key(const Exiv2ExifData *data, const char *
 			*error = new Exiv2Error(e);
 		}
 
-		return 0;
+		return nullptr;
 	}
 }
 
