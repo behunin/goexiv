@@ -330,7 +330,8 @@ void exiv2_iptc_data_free(Exiv2IptcData *x) { delete x; };
 
 const char* exiv2_iptc_datum_key(const Exiv2IptcDatum *datum)
 {
-	return datum->datum.key().c_str();
+	const std::string strkey = datum->datum.key();
+	return strdup(strkey.c_str());
 }
 
 const char* exiv2_iptc_datum_to_string(const Exiv2IptcDatum *datum)
@@ -400,7 +401,8 @@ void exiv2_exif_data_free(Exiv2ExifData *x) { delete x; };
 
 const char* exiv2_exif_datum_key(const Exiv2ExifDatum *datum)
 {
-	return datum->datum.key().c_str();
+	const std::string strkey = datum->datum.key();
+	return strdup(strkey.c_str());
 }
 
 const char* exiv2_exif_datum_to_string(const Exiv2ExifDatum *datum)
