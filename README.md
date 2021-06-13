@@ -47,6 +47,7 @@ goexivImg, err := goexiv.Open("/path/to/image.jpg")
 if err != nil {
     return err
 }
+defer goexivImg.Close()
 
 // Write an EXIF comment
 err = goexivImg.SetMetadataString("exif", "Exif.Photo.UserComment", "A comment. Might be a JSON string. Можно писать и по-русски!")
@@ -78,6 +79,7 @@ goexivImg, err := goexiv.OpenBytes(img)
 if err != nil {
     return err
 }
+defer goexivImg.Close()
 
 // Write an IPTC comment
 err = goexivImg.SetMetadataString("iptc", "Iptc.Application2.Caption", "A comment. Might be a JSON string.")
