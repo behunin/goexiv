@@ -6,7 +6,6 @@ package goexiv
 import "C"
 
 import (
-	"runtime"
 	"unsafe"
 )
 
@@ -27,33 +26,25 @@ type ExifDatumIterator struct {
 }
 
 func makeExifData(img *Image, cdata *C.Exiv2ExifData) *ExifData {
-	data := &ExifData{
-		img,
-		cdata,
-	}
-
-	runtime.SetFinalizer(data, func(x *ExifData) {
-		C.exiv2_exif_data_free(x.data)
-	})
-
-	return data
-}
-
-func makeExifDatum(data *ExifData, cdatum *C.Exiv2ExifDatum) *ExifDatum {
-	if cdatum == nil {
+	if img == nil || cdata == nil {
 		return nil
 	}
 
-	datum := &ExifDatum{
+	return &ExifData{
+		img,
+		cdata,
+	}
+}
+
+func makeExifDatum(data *ExifData, cdatum *C.Exiv2ExifDatum) *ExifDatum {
+	if data == nil || cdatum == nil {
+		return nil
+	}
+
+	return &ExifDatum{
 		data,
 		cdatum,
 	}
-
-	runtime.SetFinalizer(datum, func(x *ExifDatum) {
-		C.exiv2_exif_datum_free(x.datum)
-	})
-
-	return datum
 }
 
 func (i *Image) GetExifData() *ExifData {
@@ -62,6 +53,11 @@ func (i *Image) GetExifData() *ExifData {
 
 func (i *Image) SetExifString(key, value string) error {
 	return i.SetMetadataString("exif", key, value)
+}
+
+// Close free's the Exif data.
+func (d *ExifData) Close() {
+	C.exiv2_exif_data_free(d.data)
 }
 
 func (d *ExifData) GetString(key string) (string, error) {
@@ -121,12 +117,11 @@ func (i *ExifDatumIterator) Next() *ExifDatum {
 	return makeExifDatum(i.data, C.exiv2_exif_datum_iterator_next(i.iter))
 }
 
+// Close free's the Exif datum iterator.
+func (i *ExifDatumIterator) Close() {
+	C.exiv2_exif_datum_iterator_free(i.iter)
+}
+
 func makeExifDatumIterator(data *ExifData, cIter *C.Exiv2ExifDatumIterator) *ExifDatumIterator {
-	datum := &ExifDatumIterator{data, cIter}
-
-	runtime.SetFinalizer(datum, func(i *ExifDatumIterator) {
-		C.exiv2_exif_datum_iterator_free(i.iter)
-	})
-
-	return datum
+	return &ExifDatumIterator{data, cIter}
 }
