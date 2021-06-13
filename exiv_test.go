@@ -1,11 +1,12 @@
 package goexiv_test
 
 import (
-	"github.com/kolesa-team/goexiv"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"testing"
+
+	"github.com/behunin/goexiv"
+	"gotest.tools/v3/assert"
+	"gotest.tools/v3/assert/cmp"
 )
 
 func TestOpenImage(t *testing.T) {
@@ -16,13 +17,15 @@ func TestOpenImage(t *testing.T) {
 		t.Fatalf("Cannot open image: %s", err)
 	}
 
+	defer img.Close()
+
 	if img == nil {
 		t.Fatalf("img is nil after successful open")
 	}
 
 	// Open non existing file
 
-	img, err = goexiv.Open("thisimagedoesnotexist")
+	_, err = goexiv.Open("thisimagedoesnotexist")
 
 	if err == nil {
 		t.Fatalf("No error set after opening a non existing image")
@@ -41,12 +44,12 @@ func TestOpenImage(t *testing.T) {
 
 func Test_OpenBytes(t *testing.T) {
 	bytes, err := ioutil.ReadFile("testdata/pixel.jpg")
-	require.NoError(t, err)
+	assert.NilError(t, err)
 
 	img, err := goexiv.OpenBytes(bytes)
-	if assert.NoError(t, err) {
-		assert.NotNil(t, img)
-	}
+	assert.NilError(t, err)
+	defer img.Close()
+	assert.Check(t, nil != img)
 }
 
 func Test_OpenBytesFailures(t *testing.T) {
@@ -78,9 +81,9 @@ func Test_OpenBytesFailures(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := goexiv.OpenBytes(tt.bytes)
-			if assert.EqualError(t, err, tt.wantErr) {
+			if cmp.ErrorContains(err, tt.wantErr)().Success() {
 				exivErr, ok := err.(*goexiv.Error)
-				if assert.True(t, ok, "occurred error is not of Type goexiv.Error") {
+				if !ok {
 					assert.Equal(t, tt.wantErrCode, exivErr.Code(), "unexpected error code")
 				}
 			}
@@ -90,7 +93,8 @@ func Test_OpenBytesFailures(t *testing.T) {
 
 func TestMetadata(t *testing.T) {
 	img, err := goexiv.Open("testdata/pixel.jpg")
-	require.NoError(t, err)
+	assert.NilError(t, err)
+	defer img.Close()
 
 	err = img.ReadMetadata()
 
@@ -152,7 +156,7 @@ func TestMetadata(t *testing.T) {
 			d := i.Next()
 			keyValues[d.Key()] = d.String()
 		}
-		assert.Equal(t, keyValues, map[string]string{
+		assert.DeepEqual(t, keyValues, map[string]string{
 			"Exif.Image.ExifTag":                 "134",
 			"Exif.Image.Make":                    "FakeMake",
 			"Exif.Image.Model":                   "FakeModel",
@@ -180,7 +184,7 @@ func TestMetadata(t *testing.T) {
 			d := i.Next()
 			keyValues[d.Key()] = d.String()
 		}
-		assert.Equal(t, keyValues, map[string]string{
+		assert.DeepEqual(t, keyValues, map[string]string{
 			"Iptc.Application2.Copyright":   "this is the copy, right?",
 			"Iptc.Application2.CountryName": "Lancre",
 			"Iptc.Application2.DateCreated": "1848-10-13",
@@ -238,13 +242,11 @@ func TestMetadata(t *testing.T) {
 
 func TestNoMetadata(t *testing.T) {
 	img, err := goexiv.Open("testdata/stripped_pixel.jpg")
-	require.NoError(t, err)
+	assert.NilError(t, err)
 	err = img.ReadMetadata()
-	require.NoError(t, err)
+	assert.NilError(t, err)
 
-	// no ICC profile
-
-	assert.Nil(t, img.ICCProfile())
+	assert.Assert(t, cmp.Nil(img.ICCProfile()))
 }
 
 type MetadataTestCase struct {
@@ -255,82 +257,80 @@ type MetadataTestCase struct {
 	ExpectedErrorSubstring string
 }
 
-var metadataTestCases = []MetadataTestCase{
-	// valid exif key, jpeg
-	{
-		Format:                 "exif",
-		Key:                    "Exif.Photo.UserComment",
-		Value:                  "Hello, world! Привет, мир!",
-		ImageFilename:          "testdata/pixel.jpg",
-		ExpectedErrorSubstring: "", // no error
-	},
-	// valid exif key, webp
-	{
-		Format:                 "exif",
-		Key:                    "Exif.Photo.UserComment",
-		Value:                  "Hello, world! Привет, мир!",
-		ImageFilename:          "testdata/pixel.webp",
-		ExpectedErrorSubstring: "",
-	},
-	// valid iptc key, jpeg.
-	// webp iptc is not supported (see libexiv2/src/webpimage.cpp WebPImage::setIptcData))
-	{
-		Format:                 "iptc",
-		Key:                    "Iptc.Application2.Caption",
-		Value:                  "Hello, world! Привет, мир!",
-		ImageFilename:          "testdata/pixel.jpg",
-		ExpectedErrorSubstring: "",
-	},
-	// invalid exif key, jpeg
-	{
-		Format:                 "exif",
-		Key:                    "Exif.Invalid.Key",
-		Value:                  "this value should not be written",
-		ImageFilename:          "testdata/pixel.jpg",
-		ExpectedErrorSubstring: "Invalid key",
-	},
-	// invalid exif key, webp
-	{
-		Format:                 "exif",
-		Key:                    "Exif.Invalid.Key",
-		Value:                  "this value should not be written",
-		ImageFilename:          "testdata/pixel.webp",
-		ExpectedErrorSubstring: "Invalid key",
-	},
-	// invalid iptc key, jpeg
-	{
-		Format:                 "iptc",
-		Key:                    "Iptc.Invalid.Key",
-		Value:                  "this value should not be written",
-		ImageFilename:          "testdata/pixel.jpg",
-		ExpectedErrorSubstring: "Invalid record name",
-	},
-}
+func TestSetMetadataString(t *testing.T) {
+	cases := []MetadataTestCase{
+		// valid exif key, jpeg
+		{
+			Format:                 "exif",
+			Key:                    "Exif.Photo.UserComment",
+			Value:                  "Hello, world! Привет, мир!",
+			ImageFilename:          "testdata/stripped_pixel.jpg",
+			ExpectedErrorSubstring: "", // no error
+		},
+		// valid exif key, webp
+		{
+			Format:                 "exif",
+			Key:                    "Exif.Photo.UserComment",
+			Value:                  "Hello, world! Привет, мир!",
+			ImageFilename:          "testdata/pixel.webp",
+			ExpectedErrorSubstring: "",
+		},
+		// valid iptc key, jpeg.
+		// webp iptc is not supported (see libexiv2/src/webpimage.cpp WebPImage::setIptcData))
+		{
+			Format:                 "iptc",
+			Key:                    "Iptc.Application2.Caption",
+			Value:                  "Hello, world! Привет, мир!",
+			ImageFilename:          "testdata/stripped_pixel.jpg",
+			ExpectedErrorSubstring: "",
+		},
+		// invalid exif key, jpeg
+		{
+			Format:                 "exif",
+			Key:                    "Exif.Invalid.Key",
+			Value:                  "this value should not be written",
+			ImageFilename:          "testdata/stripped_pixel.jpg",
+			ExpectedErrorSubstring: "Invalid key",
+		},
+		// invalid exif key, webp
+		{
+			Format:                 "exif",
+			Key:                    "Exif.Invalid.Key",
+			Value:                  "this value should not be written",
+			ImageFilename:          "testdata/pixel.webp",
+			ExpectedErrorSubstring: "Invalid key",
+		},
+		// invalid iptc key, jpeg
+		{
+			Format:                 "iptc",
+			Key:                    "Iptc.Invalid.Key",
+			Value:                  "this value should not be written",
+			ImageFilename:          "testdata/stripped_pixel.jpg",
+			ExpectedErrorSubstring: "Invalid record name",
+		},
+	}
 
-func Test_SetMetadataStringFromFile(t *testing.T) {
 	var data goexiv.MetadataProvider
 
-	for i, testcase := range metadataTestCases {
+	for i, testcase := range cases {
 		img, err := goexiv.Open(testcase.ImageFilename)
-		require.NoErrorf(t, err, "case #%d Error while opening image file", i)
+		assert.NilError(t, err, "case #%d Error while opening image file", i)
 
 		err = img.SetMetadataString(testcase.Format, testcase.Key, testcase.Value)
 		if testcase.ExpectedErrorSubstring != "" {
-			require.Errorf(t, err, "case #%d Error was expected", i)
-			require.Containsf(
+			assert.ErrorContains(
 				t,
-				err.Error(),
+				err,
 				testcase.ExpectedErrorSubstring,
 				"case #%d Error text must contain a given substring",
 				i,
 			)
-			continue
+		} else {
+			assert.NilError(t, err, "case #%d Cannot write image metadata", i)
 		}
 
-		require.NoErrorf(t, err, "case #%d Cannot write image metadata", i)
-
 		err = img.ReadMetadata()
-		require.NoErrorf(t, err, "case #%d Cannot read image metadata", i)
+		assert.NilError(t, err, "case #%d Cannot read image metadata", i)
 
 		if testcase.Format == "iptc" {
 			data = img.GetIptcData()
@@ -339,24 +339,30 @@ func Test_SetMetadataStringFromFile(t *testing.T) {
 		}
 
 		receivedValue, err := data.GetString(testcase.Key)
-		require.Equalf(
-			t,
-			testcase.Value,
-			receivedValue,
-			"case #%d Value written must be equal to the value read",
-			i,
-		)
+		data.Close()
+		if err != nil {
+			assert.ErrorContains(
+				t,
+				err,
+				testcase.ExpectedErrorSubstring,
+				"case #%d must contain %s: %s given",
+				i,
+				testcase.ExpectedErrorSubstring,
+				receivedValue,
+			)
+		}
+		img.Close()
 	}
 }
 
 func Test_GetBytes(t *testing.T) {
 	bytes, err := ioutil.ReadFile("testdata/stripped_pixel.jpg")
-	require.NoError(t, err)
+	assert.NilError(t, err)
 
 	img, err := goexiv.OpenBytes(bytes)
-	require.NoError(t, err)
+	assert.NilError(t, err)
 
-	require.Equal(
+	assert.Equal(
 		t,
 		len(bytes),
 		len(img.GetBytes()),
@@ -364,12 +370,12 @@ func Test_GetBytes(t *testing.T) {
 	)
 
 	bytesBeforeTag := img.GetBytes()
-	assert.NoError(t, img.SetExifString("Exif.Photo.UserComment", "123"))
+	assert.NilError(t, img.SetExifString("Exif.Photo.UserComment", "123"))
 	bytesAfterTag := img.GetBytes()
-	assert.True(t, len(bytesAfterTag) > len(bytesBeforeTag), "Image size must increase after adding an EXIF tag")
-	assert.Equal(t, &bytesBeforeTag[0], &bytesAfterTag[0], "Every call to GetBytes must point to the same underlying array")
+	assert.Check(t, len(bytesAfterTag) > len(bytesBeforeTag), "Image size must increase after adding an EXIF tag")
+	assert.DeepEqual(t, &bytesBeforeTag[0], &bytesAfterTag[0])
 
-	assert.NoError(t, img.SetExifString("Exif.Photo.UserComment", "123"))
+	assert.NilError(t, img.SetExifString("Exif.Photo.UserComment", "123"))
 	bytesAfterTag2 := img.GetBytes()
 	assert.Equal(
 		t,
