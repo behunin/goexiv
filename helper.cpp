@@ -56,6 +56,7 @@ struct _Exiv2Error {
 	char *what;
 };
 
+// Image
 Exiv2Image* exiv2_image_factory_open(const char *path, Exiv2Error **error)
 {
 	Exiv2Image *p = 0;
