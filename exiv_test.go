@@ -220,7 +220,7 @@ func TestExif(t *testing.T) {
 }
 
 func TestXMP(t *testing.T) {
-	img, err := goexiv.Open("testdata/OZZY.jpg")
+	img, err := goexiv.Open("testdata/pixel.jpg")
 
 	assert.NilError(t, err)
 	defer img.Close()
