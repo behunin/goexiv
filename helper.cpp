@@ -1,14 +1,11 @@
 #include "helper.h"
 
-#include <exiv2/image.hpp>
-#include <exiv2/error.hpp>
-
-#include <stdio.h>
+#include <exiv2/exiv2.hpp>
 
 #define DEFINE_STRUCT(name,wrapped_type,member_name) \
 struct _##name { \
-	_##name(wrapped_type member_name) \
-		: member_name(member_name) {} \
+	_##name(wrapped_type member_name##_) \
+		: member_name(member_name##_) {} \
 	wrapped_type member_name; \
 };
 
@@ -53,20 +50,13 @@ void exiv2_exif_datum_iterator_free(Exiv2ExifDatumIterator *x) { delete x; };
 void exiv2_xmp_datum_iterator_free(Exiv2XmpDatumIterator *x) { delete x; };
 
 struct _Exiv2Error {
-	_Exiv2Error(const Exiv2::Error &error);
+	_Exiv2Error(const Exiv2::Error &error) : code(error.code()) , what(strdup(error.what())){}
 
 	int code;
 	char *what;
 };
 
-_Exiv2Error::_Exiv2Error(const Exiv2::Error &error)
-	: code(error.code())
-	, what(strdup(error.what()))
-{
-}
-
-Exiv2Image*
-exiv2_image_factory_open(const char *path, Exiv2Error **error)
+Exiv2Image* exiv2_image_factory_open(const char *path, Exiv2Error **error)
 {
 	Exiv2Image *p = 0;
 
@@ -84,8 +74,7 @@ exiv2_image_factory_open(const char *path, Exiv2Error **error)
 	return 0;
 }
 
-Exiv2Image*
-exiv2_image_factory_open_bytes(const unsigned char *bytes, long size, Exiv2Error **error)
+Exiv2Image* exiv2_image_factory_open_bytes(const unsigned char *bytes, long size, Exiv2Error **error)
 {
 	Exiv2Image *p = 0;
 
@@ -103,8 +92,7 @@ exiv2_image_factory_open_bytes(const unsigned char *bytes, long size, Exiv2Error
 	return 0;
 }
 
-void
-exiv2_image_read_metadata(Exiv2Image *img, Exiv2Error **error)
+void exiv2_image_read_metadata(Exiv2Image *img, Exiv2Error **error)
 {
 	try {
 		img->image->readMetadata();
@@ -115,8 +103,7 @@ exiv2_image_read_metadata(Exiv2Image *img, Exiv2Error **error)
 	}
 }
 
-void
-exiv2_image_set_exif_string(Exiv2Image *img, char *key, char *value, Exiv2Error **error)
+void exiv2_image_set_exif_string(Exiv2Image *img, char *key, char *value, Exiv2Error **error)
 {
 	Exiv2::ExifData exifData = img->image->exifData();
 
@@ -135,8 +122,7 @@ exiv2_image_set_exif_string(Exiv2Image *img, char *key, char *value, Exiv2Error 
 	}
 }
 
-void
-exiv2_image_set_iptc_string(Exiv2Image *img, char *key, char *value, Exiv2Error **error)
+void exiv2_image_set_iptc_string(Exiv2Image *img, char *key, char *value, Exiv2Error **error)
 {
 	Exiv2::IptcData iptcData = img->image->iptcData();
 
@@ -154,14 +140,12 @@ exiv2_image_set_iptc_string(Exiv2Image *img, char *key, char *value, Exiv2Error 
 	}
 }
 
-long
-exiv_image_get_size(Exiv2Image *img)
+long exiv_image_get_size(Exiv2Image *img)
 {
     return (long)img->image->io().size();
 }
 
-unsigned char*
-exiv_image_get_bytes_ptr(Exiv2Image *img)
+unsigned char* exiv_image_get_bytes_ptr(Exiv2Image *img)
 {
     return img->image->io().mmap();
 }
@@ -194,14 +178,12 @@ long exiv2_image_icc_profile_size(Exiv2Image *img)
 }
 
 // XMP
-Exiv2XmpData*
-exiv2_image_get_xmp_data(const Exiv2Image *img)
+Exiv2XmpData* exiv2_image_get_xmp_data(const Exiv2Image *img)
 {
 	return new Exiv2XmpData(img->image->xmpData());
 }
 
-Exiv2XmpDatum*
-exiv2_xmp_data_find_key(const Exiv2XmpData *data, const char *key, Exiv2Error **error)
+Exiv2XmpDatum* exiv2_xmp_data_find_key(const Exiv2XmpData *data, const char *key, Exiv2Error **error)
 {
 	try {
 		const Exiv2::XmpData::const_iterator it = data->data.findKey(Exiv2::XmpKey(key));
@@ -221,8 +203,7 @@ exiv2_xmp_data_find_key(const Exiv2XmpData *data, const char *key, Exiv2Error **
 
 void exiv2_xmp_data_free(Exiv2XmpData *x) { delete x; };
 
-char*
-exiv2_xmp_datum_to_string(const Exiv2XmpDatum *datum)
+char* exiv2_xmp_datum_to_string(const Exiv2XmpDatum *datum)
 {
     Exiv2::TypeId typeId = datum->datum.typeId();
 
@@ -273,14 +254,12 @@ const char *exiv2_xmp_datum_key(const Exiv2XmpDatum *datum)
 
 // IPTC
 
-Exiv2IptcData*
-exiv2_image_get_iptc_data(const Exiv2Image *img)
+Exiv2IptcData* exiv2_image_get_iptc_data(const Exiv2Image *img)
 {
 	return new Exiv2IptcData(img->image->iptcData());
 }
 
-Exiv2IptcDatum*
-exiv2_iptc_data_find_key(const Exiv2IptcData *data, const char *key, Exiv2Error **error)
+Exiv2IptcDatum* exiv2_iptc_data_find_key(const Exiv2IptcData *data, const char *key, Exiv2Error **error)
 {
 	try {
 		const Exiv2::IptcData::const_iterator it = data->data.findKey(Exiv2::IptcKey(key));
@@ -344,14 +323,12 @@ void exiv2_iptc_datum_free(Exiv2IptcDatum *x) { delete x; };
 
 // EXIF
 
-Exiv2ExifData*
-exiv2_image_get_exif_data(const Exiv2Image *img)
+Exiv2ExifData* exiv2_image_get_exif_data(const Exiv2Image *img)
 {
 	return new Exiv2ExifData(img->image->exifData());
 }
 
-Exiv2ExifDatum*
-exiv2_exif_data_find_key(const Exiv2ExifData *data, const char *key, Exiv2Error **error)
+Exiv2ExifDatum* exiv2_exif_data_find_key(const Exiv2ExifData *data, const char *key, Exiv2Error **error)
 {
 	try {
 		const Exiv2::ExifData::const_iterator it = data->data.findKey(Exiv2::ExifKey(key));
@@ -415,20 +392,17 @@ void exiv2_exif_datum_free(Exiv2ExifDatum *x) { delete x; };
 
 // ERRORS
 
-int
-exiv2_error_code(const Exiv2Error *error)
+int exiv2_error_code(const Exiv2Error *error)
 {
 	return error->code;
 }
 
-const char*
-exiv2_error_what(const Exiv2Error *error)
+const char* exiv2_error_what(const Exiv2Error *error)
 {
 	return error->what;
 }
 
-void
-exiv2_error_free(Exiv2Error *e)
+void exiv2_error_free(Exiv2Error *e)
 {
 	if (e == 0) {
 		return;
