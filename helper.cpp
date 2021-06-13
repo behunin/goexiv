@@ -12,12 +12,6 @@ struct _##name { \
 	wrapped_type member_name; \
 };
 
-#define DEFINE_FREE_FUNCTION(name,type) \
-void name##_free(type x) \
-{ \
-	delete x; \
-}
-
 DEFINE_STRUCT(Exiv2ImageFactory, Exiv2::ImageFactory*, factory);
 DEFINE_STRUCT(Exiv2Image, Exiv2::Image::AutoPtr, image);
 
@@ -54,8 +48,8 @@ struct _Exiv2IptcDatumIterator {
 	Exiv2IptcDatum* next();
 };
 
-DEFINE_FREE_FUNCTION(exiv2_iptc_datum_iterator, Exiv2IptcDatumIterator*);
-DEFINE_FREE_FUNCTION(exiv2_exif_datum_iterator, Exiv2ExifDatumIterator*);
+void exiv2_iptc_datum_iterator_free(Exiv2IptcDatumIterator *x) { delete x; };
+void exiv2_exif_datum_iterator_free(Exiv2ExifDatumIterator *x) { delete x; };
 void exiv2_xmp_datum_iterator_free(Exiv2XmpDatumIterator *x) { delete x; };
 
 struct _Exiv2Error {
@@ -173,7 +167,7 @@ exiv_image_get_bytes_ptr(Exiv2Image *img)
 }
 
 
-DEFINE_FREE_FUNCTION(exiv2_image, Exiv2Image*);
+void exiv2_image_free(Exiv2Image *x) { delete x; };
 
 int exiv2_image_get_pixel_width(Exiv2Image *img) {
 	return img->image->pixelWidth();
@@ -332,7 +326,7 @@ Exiv2IptcDatum* exiv2_iptc_datum_iterator_next(Exiv2IptcDatumIterator *iter)
 	return iter->next();
 }
 
-DEFINE_FREE_FUNCTION(exiv2_iptc_data, Exiv2IptcData*);
+void exiv2_iptc_data_free(Exiv2IptcData *x) { delete x; };
 
 const char* exiv2_iptc_datum_key(const Exiv2IptcDatum *datum)
 {
@@ -345,7 +339,7 @@ const char* exiv2_iptc_datum_to_string(const Exiv2IptcDatum *datum)
 	return strdup(strval.c_str());
 }
 
-DEFINE_FREE_FUNCTION(exiv2_iptc_datum, Exiv2IptcDatum*);
+void exiv2_iptc_datum_free(Exiv2IptcDatum *x) { delete x; };
 
 // EXIF
 
@@ -402,7 +396,7 @@ Exiv2ExifDatum* exiv2_exif_datum_iterator_next(Exiv2ExifDatumIterator *iter)
 	return iter->next();
 }
 
-DEFINE_FREE_FUNCTION(exiv2_exif_data, Exiv2ExifData*);
+void exiv2_exif_data_free(Exiv2ExifData *x) { delete x; };
 
 const char* exiv2_exif_datum_key(const Exiv2ExifDatum *datum)
 {
@@ -415,7 +409,7 @@ const char* exiv2_exif_datum_to_string(const Exiv2ExifDatum *datum)
 	return strdup(strval.c_str());
 }
 
-DEFINE_FREE_FUNCTION(exiv2_exif_datum, Exiv2ExifDatum*);
+void exiv2_exif_datum_free(Exiv2ExifDatum *x) { delete x; };
 
 // ERRORS
 
