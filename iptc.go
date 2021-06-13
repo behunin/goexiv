@@ -6,7 +6,6 @@ package goexiv
 import "C"
 
 import (
-	"runtime"
 	"unsafe"
 )
 
@@ -27,33 +26,25 @@ type IptcDatumIterator struct {
 }
 
 func makeIptcData(img *Image, cdata *C.Exiv2IptcData) *IptcData {
-	data := &IptcData{
-		img,
-		cdata,
-	}
-
-	runtime.SetFinalizer(data, func(x *IptcData) {
-		C.exiv2_iptc_data_free(x.data)
-	})
-
-	return data
-}
-
-func makeIptcDatum(data *IptcData, cdatum *C.Exiv2IptcDatum) *IptcDatum {
-	if cdatum == nil {
+	if img == nil || cdata == nil {
 		return nil
 	}
 
-	datum := &IptcDatum{
+	return &IptcData{
+		img,
+		cdata,
+	}
+}
+
+func makeIptcDatum(data *IptcData, cdatum *C.Exiv2IptcDatum) *IptcDatum {
+	if data == nil || cdatum == nil {
+		return nil
+	}
+
+	return &IptcDatum{
 		data,
 		cdatum,
 	}
-
-	runtime.SetFinalizer(datum, func(x *IptcDatum) {
-		C.exiv2_iptc_datum_free(x.datum)
-	})
-
-	return datum
 }
 
 func (i *Image) GetIptcData() *IptcData {
@@ -62,6 +53,11 @@ func (i *Image) GetIptcData() *IptcData {
 
 func (i *Image) SetIptcString(key, value string) error {
 	return i.SetMetadataString("iptc", key, value)
+}
+
+// Close free's the Iptc data.
+func (d *IptcData) Close() {
+	C.exiv2_iptc_data_free(d.data)
 }
 
 func (d *IptcData) GetString(key string) (string, error) {
@@ -121,12 +117,11 @@ func (i *IptcDatumIterator) Next() *IptcDatum {
 	return makeIptcDatum(i.data, C.exiv2_iptc_datum_iterator_next(i.iter))
 }
 
+// Close free's the Iptc datum iterator.
+func (i *IptcDatumIterator) Close() {
+	C.exiv2_iptc_datum_iterator_free(i.iter)
+}
+
 func makeIptcDatumIterator(data *IptcData, cIter *C.Exiv2IptcDatumIterator) *IptcDatumIterator {
-	datum := &IptcDatumIterator{data, cIter}
-
-	runtime.SetFinalizer(datum, func(i *IptcDatumIterator) {
-		C.exiv2_iptc_datum_iterator_free(i.iter)
-	})
-
-	return datum
+	return &IptcDatumIterator{data, cIter}
 }
