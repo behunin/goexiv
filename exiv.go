@@ -112,6 +112,7 @@ func (i *Image) ReadMetadata() error {
 func (i *Image) GetBytes() []byte {
 	size := int(C.exiv_image_get_size(i.img))
 	ptr := C.exiv_image_get_bytes_ptr(i.img)
+	defer C.free(unsafe.Pointer(ptr))
 
 	var slice []byte
 	header := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
