@@ -23,6 +23,14 @@ DEFINE_STRUCT(Exiv2Image, Exiv2::Image::AutoPtr, image);
 
 DEFINE_STRUCT(Exiv2XmpData, const Exiv2::XmpData&, data);
 DEFINE_STRUCT(Exiv2XmpDatum, const Exiv2::Xmpdatum&, datum);
+struct _Exiv2XmpDatumIterator {
+	_Exiv2XmpDatumIterator(Exiv2::XmpMetadata::const_iterator i, Exiv2::XmpMetadata::const_iterator e) : it(i), end(e) {}
+	Exiv2::XmpMetadata::const_iterator it;
+	Exiv2::XmpMetadata::const_iterator end;
+
+	bool has_next() const;
+	Exiv2XmpDatum *next();
+};
 
 DEFINE_STRUCT(Exiv2ExifData, const Exiv2::ExifData&, data);
 DEFINE_STRUCT(Exiv2ExifDatum, const Exiv2::Exifdatum&, datum);
@@ -48,6 +56,7 @@ struct _Exiv2IptcDatumIterator {
 
 DEFINE_FREE_FUNCTION(exiv2_iptc_datum_iterator, Exiv2IptcDatumIterator*);
 DEFINE_FREE_FUNCTION(exiv2_exif_datum_iterator, Exiv2ExifDatumIterator*);
+void exiv2_xmp_datum_iterator_free(Exiv2XmpDatumIterator *x) { delete x; };
 
 struct _Exiv2Error {
 	_Exiv2Error(const Exiv2::Error &error);
@@ -216,7 +225,7 @@ exiv2_xmp_data_find_key(const Exiv2XmpData *data, const char *key, Exiv2Error **
 	}
 }
 
-DEFINE_FREE_FUNCTION(exiv2_xmp_data, Exiv2XmpData*);
+void exiv2_xmp_data_free(Exiv2XmpData *x) { delete x; };
 
 char*
 exiv2_xmp_datum_to_string(const Exiv2XmpDatum *datum)
@@ -234,7 +243,39 @@ exiv2_xmp_datum_to_string(const Exiv2XmpDatum *datum)
 	return strdup(strval.c_str());
 }
 
-DEFINE_FREE_FUNCTION(exiv2_xmp_datum, Exiv2XmpDatum*);
+void exiv2_xmp_datum_free(Exiv2XmpDatum *x) { delete x; };
+
+Exiv2XmpDatumIterator *exiv2_xmp_data_iterator(const Exiv2XmpData *data)
+{
+	return new Exiv2XmpDatumIterator(data->data.begin(), data->data.end());
+}
+
+bool Exiv2XmpDatumIterator::has_next() const { return it != end; }
+
+int exiv2_xmp_data_iterator_has_next(const Exiv2XmpDatumIterator *iter)
+{
+	return iter->has_next() ? 1 : 0;
+}
+
+Exiv2XmpDatum *Exiv2XmpDatumIterator::next()
+{
+	if (it == end)
+	{
+		return 0;
+	}
+	return new Exiv2XmpDatum(*it++);
+}
+
+Exiv2XmpDatum *exiv2_xmp_datum_iterator_next(Exiv2XmpDatumIterator *iter)
+{
+	return iter->next();
+}
+
+const char *exiv2_xmp_datum_key(const Exiv2XmpDatum *datum)
+{
+	const std::string strkey = datum->datum.key();
+	return strdup(strkey.c_str());
+}
 
 // IPTC
 
