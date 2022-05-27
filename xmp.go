@@ -96,6 +96,13 @@ func (d *XmpDatum) String() string {
 	return C.GoString(cstr)
 }
 
+func (d *XmpDatum) Type() string {
+	cstr := C.exiv2_xmp_datum_type(d.datum)
+	defer C.free(unsafe.Pointer(cstr))
+
+	return C.GoString(cstr)
+}
+
 // Iterator returns a new ExifDatumIterator to iterate over all Exif data.
 func (d *XmpData) Iterator() *XmpDatumIterator {
 	return makeXmpDatumIterator(d, C.exiv2_xmp_data_iterator(d.data))

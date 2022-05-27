@@ -36,6 +36,7 @@ Exiv2XmpData* exiv2_image_get_xmp_data(const Exiv2Image *img);
 void exiv2_xmp_data_free(Exiv2XmpData *data);
  const char *exiv2_xmp_datum_key(const Exiv2XmpDatum *datum);
 char* exiv2_xmp_datum_to_string(const Exiv2XmpDatum *datum);
+char* exiv2_xmp_datum_type(const Exiv2XmpDatum *datum);
 void exiv2_xmp_datum_free(Exiv2XmpDatum *datum);
 Exiv2XmpDatum* exiv2_xmp_data_find_key(const Exiv2XmpData *data, const char *key, Exiv2Error **error);
 Exiv2XmpDatumIterator *exiv2_xmp_data_iterator(const Exiv2XmpData *data);

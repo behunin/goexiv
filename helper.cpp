@@ -212,11 +212,19 @@ char* exiv2_xmp_datum_to_string(const Exiv2XmpDatum *datum)
 
     if (typeId == Exiv2::xmpBag) {
         strval = datum->datum.toString();
+    } else if (typeId == Exiv2::xmpSeq) {
+        strval = datum->datum.size()==0 ? "" : datum->datum.toString(0);	
     } else {
         strval = datum->datum.toString(0);
     }
 
 	return strdup(strval.c_str());
+}
+
+char *exiv2_xmp_datum_type(const Exiv2XmpDatum *datum)
+{
+	const std::string strtypename = datum->datum.typeName();
+	return strdup(strtypename.c_str());
 }
 
 void exiv2_xmp_datum_free(Exiv2XmpDatum *x) { delete x; };
